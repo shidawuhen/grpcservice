@@ -2,14 +2,17 @@ module grpcservice
 
 go 1.12
 
-//replace google.golang.org/grpc => google.golang.org/grpc v1.8.2
+//replace github.com/etcd-io/etcd => github.com/etcd-io/etcd v3.4.11
 
 require (
-	github.com/golang/protobuf v1.4.2
-	golang.org/x/lint v0.0.0-20190313153728-d0100b6bd8b3 // indirect
-	golang.org/x/net v0.0.0-20200822124328-c89045814202
-	golang.org/x/tools v0.0.0-20190524140312-2c0ae7006135 // indirect
-	google.golang.org/grpc v1.31.0
+	github.com/coreos/etcd v3.3.25+incompatible // indirect
+	github.com/coreos/go-semver v0.3.0 // indirect
+	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf // indirect
+	github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f // indirect
+	github.com/gogo/protobuf v1.3.1 // indirect
+	github.com/golang/protobuf v1.4.1
+	github.com/google/uuid v1.1.1 // indirect
+	go.uber.org/zap v1.15.0 // indirect
+	google.golang.org/grpc v1.26.0
 	google.golang.org/protobuf v1.23.0
-	honnef.co/go/tools v0.0.0-20190523083050-ea95bdfd59fc // indirect
 )

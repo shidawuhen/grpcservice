@@ -20,12 +20,15 @@
 package main
 
 import (
-"context"
-"log"
-"net"
+	"context"
+	"log"
+	"net"
+	"time"
 
-"google.golang.org/grpc"
-pb "grpcservice/helloworld"
+	"fmt"
+	"github.com/coreos/etcd/clientv3"
+	"google.golang.org/grpc"
+	pb "grpcservice/helloworld"
 )
 
 const (
@@ -43,7 +46,42 @@ func (s *server) SayHello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloRe
 	return &pb.HelloReply{Message: "Hello " + in.GetName()}, nil
 }
 
+func initEtcd() {
+	var (
+		config  clientv3.Config
+		err     error
+		client  *clientv3.Client
+		kv      clientv3.KV
+		putResp *clientv3.PutResponse
+	)
+	//配置
+	config = clientv3.Config{
+		Endpoints:   []string{"127.0.0.1:2379"},
+		DialTimeout: time.Second * 5,
+	}
+	//连接 床见一个客户端
+	if client, err = clientv3.New(config); err != nil {
+		fmt.Println(err)
+		return
+	}
+	//用于读写etcd的键值对
+	kv = clientv3.NewKV(client)
+	putResp, err = kv.Put(context.TODO(), "/cron/jobs/job1", "bye", clientv3.WithPrevKV())
+	if err != nil {
+		fmt.Println(err)
+	} else {
+		//获取版本信息
+		fmt.Println("Revision:", putResp.Header.Revision)
+		if putResp.PrevKv != nil {
+			fmt.Println("key:", string(putResp.PrevKv.Key))
+			fmt.Println("Value:", string(putResp.PrevKv.Value))
+			fmt.Println("Version:", string(putResp.PrevKv.Version))
+		}
+	}
+}
+
 func main() {
+	initEtcd()
 	lis, err := net.Listen("tcp", port)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)

@@ -29,10 +29,13 @@ import (
 	"github.com/coreos/etcd/clientv3"
 	"google.golang.org/grpc"
 	pb "grpcservice/helloworld"
+	"grpcservice/lib"
 )
 
 const (
 	port = ":50051"
+	GROUP = "b2c"
+	TEAM =  "i18n"
 )
 
 // server is used to implement helloworld.GreeterServer.
@@ -59,14 +62,23 @@ func initEtcd() {
 		Endpoints:   []string{"127.0.0.1:2379"},
 		DialTimeout: time.Second * 5,
 	}
-	//连接 床见一个客户端
+	//连接 创建一个客户端
 	if client, err = clientv3.New(config); err != nil {
 		fmt.Println(err)
 		return
 	}
+
+	//获取ip
+	ip, err := lib.ExternalIP()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	address := ip.String() + port
+	fmt.Println(address)
 	//用于读写etcd的键值对
 	kv = clientv3.NewKV(client)
-	putResp, err = kv.Put(context.TODO(), "/cron/jobs/job1", "bye", clientv3.WithPrevKV())
+	putResp, err = kv.Put(context.TODO(), "/"+GROUP+ "/" + TEAM + "/" + address, address, clientv3.WithPrevKV())
 	if err != nil {
 		fmt.Println(err)
 	} else {

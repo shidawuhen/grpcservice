@@ -23,20 +23,19 @@ import (
 	"context"
 	"log"
 	"net"
-	"time"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"fmt"
-	"github.com/coreos/etcd/clientv3"
 	"google.golang.org/grpc"
 	pb "grpcservice/helloworld"
 	"grpcservice/lib"
 )
-
-const (
+const(
 	port = ":50051"
-	GROUP = "b2c"
-	TEAM =  "i18n"
-)
+	)
+
 
 // server is used to implement helloworld.GreeterServer.
 type server struct {
@@ -49,51 +48,34 @@ func (s *server) SayHello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloRe
 	return &pb.HelloReply{Message: "Hello " + in.GetName()}, nil
 }
 
-func initEtcd() {
-	var (
-		config  clientv3.Config
-		err     error
-		client  *clientv3.Client
-		kv      clientv3.KV
-		putResp *clientv3.PutResponse
-	)
-	//配置
-	config = clientv3.Config{
-		Endpoints:   []string{"127.0.0.1:2379"},
-		DialTimeout: time.Second * 5,
-	}
-	//连接 创建一个客户端
-	if client, err = clientv3.New(config); err != nil {
-		fmt.Println(err)
-		return
-	}
 
-	//获取ip
-	ip, err := lib.ExternalIP()
-	if err != nil {
-		fmt.Println(err)
-		return
+//退出前记录错误 & 释放相关资源
+func beforeExit() {
+	lib.EtcdDelete(port)
+	//有错时记录错误信息
+	if r := recover(); r != nil {
+		tmp := "Panic err : " + r.(string)
+		fmt.Println("panic:", tmp)
 	}
-	address := ip.String() + port
-	fmt.Println(address)
-	//用于读写etcd的键值对
-	kv = clientv3.NewKV(client)
-	putResp, err = kv.Put(context.TODO(), "/"+GROUP+ "/" + TEAM + "/" + address, address, clientv3.WithPrevKV())
-	if err != nil {
-		fmt.Println(err)
-	} else {
-		//获取版本信息
-		fmt.Println("Revision:", putResp.Header.Revision)
-		if putResp.PrevKv != nil {
-			fmt.Println("key:", string(putResp.PrevKv.Key))
-			fmt.Println("Value:", string(putResp.PrevKv.Value))
-			fmt.Println("Version:", string(putResp.PrevKv.Version))
-		}
+}
+
+//接收中断
+func interrupt() {
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
+	sign, ok := <-signals
+	if ok {
+		lib.EtcdDelete(port)
+		tmp := "OS Signal received: " + sign.String()
+		fmt.Println(tmp)
+		os.Exit(0)
 	}
 }
 
 func main() {
-	initEtcd()
+	defer beforeExit()
+	go interrupt()
+	lib.EtcdPut(port)
 	lis, err := net.Listen("tcp", port)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)

@@ -44,20 +44,40 @@ func EtcdPut(port string) {
 	}
 	address := ip.String() + port
 	fmt.Println(address)
+
+	//租约
+	//创建租约
+	lease := clientv3.NewLease(client)
+	var leaseId clientv3.LeaseID
+	//设置10秒租约（过期时间为10秒）
+	if leaseRes,err := lease.Grant(context.TODO(),5);err != nil {
+		fmt.Println(err)
+		return
+	} else {
+		//得到租约id
+		leaseId = leaseRes.ID
+	}
+	lease.KeepAlive(context.TODO(), leaseId)
 	//用于读写etcd的键值对
 	kv = clientv3.NewKV(client)
-	putResp, err = kv.Put(context.TODO(), "/"+GROUP+ "/" + TEAM + "/" + address, address, clientv3.WithPrevKV())
-	if err != nil {
-		fmt.Println(err)
-	} else {
-		//获取版本信息
-		fmt.Println("Revision:", putResp.Header.Revision)
-		if putResp.PrevKv != nil {
-			fmt.Println("key:", string(putResp.PrevKv.Key))
-			fmt.Println("Value:", string(putResp.PrevKv.Value))
-			fmt.Println("Version:", string(putResp.PrevKv.Version))
+	ticker := time.NewTicker(time.Second * 3)
+	go func() {
+		for range ticker.C {
+			putResp, err = kv.Put(context.TODO(), "/"+GROUP+ "/" + TEAM + "/" + address, address, clientv3.WithLease(leaseId))
+			if err != nil {
+				fmt.Println(err)
+			} else {
+				//获取版本信息
+				fmt.Println("Revision:", putResp.Header.Revision)
+				if putResp.PrevKv != nil {
+					fmt.Println("key:", string(putResp.PrevKv.Key))
+					fmt.Println("Value:", string(putResp.PrevKv.Value))
+					fmt.Println("Version:", string(putResp.PrevKv.Version))
+				}
+			}
 		}
-	}
+	}()
+
 }
 
 func EtcdDelete(port string){

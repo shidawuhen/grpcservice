@@ -20,16 +20,18 @@
 package main
 
 import (
-"context"
-"log"
-"net"
-
-"google.golang.org/grpc"
-pb "grpcservice/helloworld"
+	"context"
+	"log"
+	"net"
+	"net/http"
+	"google.golang.org/grpc"
+	pb "grpcservice/helloworld"
+	_ "net/http/pprof"
 )
 
 const (
 	port = ":50051"
+	portpprof = ":50052"
 )
 
 // server is used to implement helloworld.GreeterServer.
@@ -44,6 +46,11 @@ func (s *server) SayHello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloRe
 }
 
 func main() {
+	//pprof
+	go func() {
+		http.ListenAndServe(portpprof, nil)
+	}()
+
 	lis, err := net.Listen("tcp", port)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
